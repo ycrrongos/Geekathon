@@ -4,13 +4,14 @@
 
 右侧胶囊悬浮窗，贴在屏幕右边，不挡住下层应用。打开时关闭钮、写作条/写作卡、笔记卡片从上到下依次从右往左非线性弹出；关闭时反向（自下而上滑出消失）。点开/收起单条速记、打开/关闭「开始闪记」写作卡也有展开与收回动画（列表刷新不重播整窗进场）。
 
-- **闪记列表**：彩色圆角卡片叠放。点卡片展开看全文和日期；点左侧空心圆或色点换色。
+- **闪记列表**：彩色圆角卡片叠放。点卡片展开看全文和日期；点左侧空心圆或色点换色。打开列表/写作时**左侧同时出现今日日程**（见 `11-day-schedule.md`）。
 - **开始闪记 / 在悬浮窗写作**：悬浮窗里输入，右上角 × 关闭写作窗。可录音，可手动打字，也可「语音输入」。录音停止后若已安装「守伴语音模型」会离线 SenseVoice 转写并写入输入框（仍保留录音路径）；未安装则 Toast 提示，纯录音仍可保存为「语音速记」。有模型时「语音输入」= 短录+转写；无模型时回退系统 SpeechRecognizer。
+- 分类选「日程」时会走富日程 AI 管线（规范化 / 补时间 / 审查），并写入 `DayScheduleStore`；原始闪记仍会存一条。
 - 带录音的卡片有播放按钮：重放 / 暂停 / 继续。展开后右上角 × 收起卡片。
 - 主 App 日记列表每条左侧有同步色点。
 - 主页权限状态含「离线语音模型：已安装/未安装」。
 
-分类（日程/灵感/日记/待办/其他）仍保留；日程默认今天，供夜间守护读取。分类不再拦截保存：未改分类时记为「其他」。
+分类（日程/灵感/日记/待办/其他）仍保留；日程默认今天。分类不再拦截保存：未改分类时记为「其他」。
 
 ## 入口（手势 / 主页按钮 / 配置页）
 
@@ -22,12 +23,13 @@
 
 ## 模块与关键类
 
-- `FlashNoteHud` / `FlashNoteOverlay`：右侧 overlay
+- `FlashNoteHud` / `FlashNoteOverlay`：右侧 overlay（打开时联动 `ScheduleHud`）
 - `FlashNoteStore`（SQLite，含 `color`、`audio_path`）
+- 富日程：`DayScheduleStore` / `ScheduleOverlay`（见 `11-day-schedule.md`）
 - `FlashNoteRecorder` / `FlashNotePlayer`：录音与回放
 - `FlashNotePlayActivity`：1px 透明独立 task。Android 16 AudioHardening 会静音没有前台 Activity 的后台播放（本机为后刷原生 AOSP，不是 ColorOS）；overlay 点播放时由无障碍服务（没有则桌宠服务）拉起这个 Activity，播完或停止后关掉。不要做成全屏窗盖住下层应用。
-- `MicPermissionActivity`：独立 task 申请麦克风，避免把守伴主页抬到前台
-- `GuardInitProvider` 里 `FlashNoteStore.init`
+- `MicPermissionActivity`：独立 task 申请麦克风，避免把守伴主页抬到前台；日程侧用 `scheduleIntent` 区分提示，授权后需重新按住日程语音按钮
+- `GuardInitProvider` 里 `FlashNoteStore.init`、`DayScheduleStore.init`
 - 离线 ASR：`SenseVoiceAsr` + `SenseVoiceModelStore`；模型在独立 APK `:sensevoice-pack`（`com.geekathon.guardpet.sensevoice`），详见 `docs/features/09-sensevoice-asr.md`
 
 音频文件在 `filesDir/flash_audio/`，WAV（AudioRecord）。播放走 AudioTrack，不经过 MediaPlayer。overlay 点播放不要直接在 Service 里出声，必须经 `FlashNotePlayActivity`。
@@ -35,7 +37,8 @@
 ## 权限
 
 - 显示：`SYSTEM_ALERT_WINDOW`
-- 录音 / 听写：麦克风。从 overlay 申请时走 `MicPermissionActivity`（独立 `taskAffinity`）
+- 录音 / 听写：麦克风。从 overlay 申请时走 `MicPermissionActivity`（独立 `taskAffinity`）；授权回调不会替 overlay 自动开始一段无法结束的长按录音
+- 日程日历导入：`READ_CALENDAR`（见 `11-day-schedule.md`）
 
 ## 不要做的事
 
@@ -49,14 +52,14 @@
 ## 验证步骤
 
 1. 把手势分别绑到「闪记列表」和「开始闪记」。
-2. 开始闪记：打字保存一条；再录音保存一条。
+2. 开始闪记：打字保存一条；再录音保存一条；打开后左侧应有日程栏。
 3. 列表里展开卡片，点色点换色；回主页日记，左侧色点应一致。
 4. 语音卡片点播放：可暂停、再点继续、播完可重放。在微信等其他 App 上层点播放也要有声音，且不要把守伴主页抬上来。
 5. 写作时下层应用仍可点悬浮窗以外区域。
 
 ## 搜索关键词
 
-`FlashNoteHud`、`FlashNoteOverlay`、`FlashNotePlayActivity`、`FlashNotePlayer`、`AudioHardening`、`FLAG_NOT_FOCUSABLE`、`audio_path`、`OvershootInterpolator`、`needsEntrance`、`playExitAnimation`、`animateCardExpand`、`SenseVoiceAsr`、`voice_transcribing`、`VolumeChordFlashNote`
+`FlashNoteHud`、`FlashNoteOverlay`、`FlashNotePlayActivity`、`FlashNotePlayer`、`ScheduleHud`、`DayScheduleStore`、`AudioHardening`、`FLAG_NOT_FOCUSABLE`、`audio_path`、`OvershootInterpolator`、`needsEntrance`、`playExitAnimation`、`animateCardExpand`、`SenseVoiceAsr`、`voice_transcribing`、`VolumeChordFlashNote`
 
 ## 相关文档
 

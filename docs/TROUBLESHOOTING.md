@@ -27,6 +27,69 @@
 
 ## 条目
 
+### 2026-09-13 — 日程语音策略请求卡住且未申请麦克风
+
+- **功能 / 上下文**：`docs/features/11-day-schedule.md` / `ScheduleOverlay` / `ScheduleLlmClient`
+- **症状**：日程卡片按住语音策略后，模型网络不可用时长时间停在解析状态；首次使用日程语音没有弹出麦克风授权，录音无法开始。
+- **尝试过的方法**：
+  1. 直接调用 `/chat/completions`（结果：网络/DNS 不通时会等到较长的连接或读取超时）
+  2. 把日程语音直接复用闪记录音（结果：复用了录音器，但没有复用闪记 overlay 的授权入口）
+- **最终原因**：策略解析和后续合理性审查没有在请求前确认模型 HTTP API 可达；日程 overlay 的长按入口也绕过了 `RECORD_AUDIO` 动态授权。
+- **解决方法**：`HabitLlmClient.probeModelApi` 在策略解析、日程审查前用带鉴权的 `GET /models` 做 3 秒 HTTP 探测（不用 ICMP）；失败时不发聊天请求，策略按本地应用名规则处理、审查按本地规则放行。`ScheduleOverlay` 缺权限时启动独立 task 的 `MicPermissionActivity.scheduleIntent`；授权后只提示用户重新按住，避免原长按已结束却启动无法停止的录音。
+- **后续**：`/models` 是 OpenAI 兼容 API 的健康检查；若自定义服务没有该端点，需提供兼容的 `/models`，或调整探测实现。真机应分别验证授权后再次录音、API 不可达时快速回退。
+
+### 2026-09-12 — 左右切层改 DualOverlayShell 单窗
+
+- **功能 / 上下文**：`docs/features/11-day-schedule.md` / `DualOverlayShell`
+- **症状**：双 overlay 用 removeView+addView 抬层，反复出现闪一下、顶层再点丢焦点/无法打字、切层不稳。
+- **最终原因**：两条独立 `TYPE_APPLICATION_OVERLAY` 只能靠 remount 改 z-order，与触摸分发、IME 冲突。
+- **解决方法**：`PassthroughFrameLayout` 全屏单窗挂左右子面板；切层只用 `elevation`/`bringToFront`；选时间 `setHostVisible(false)`。
+- **后续**：真机确认中间区域可点下层 App、重叠区上层可点、打字不丢焦。
+
+### 2026-09-12 — 顶层再点闪一下且无法打字/点击
+
+- **功能 / 上下文**：`docs/features/11-day-schedule.md` / `OverlayLayerCoordinator`
+- **症状**：已在最上层的一侧再点会闪；输入框无法打字；该侧控件点不动。
+- **最终原因**：`front == side` 时仍 `applyZOrder` 对两侧 `removeView`+`addView`，打断焦点与触摸。
+- **解决方法**：已在顶层直接 return；切层只 `raise` 新上层一次；切换中重复请求进 `pending`。
+- **后续**：无
+
+### 2026-09-12 — 展开卡片有动作但不切左右层
+
+- **功能 / 上下文**：`docs/features/11-day-schedule.md` / `OverlayLayerCoordinator`
+- **症状**：空白处点击能切层；点展开等有业务反馈的控件时动作执行了，左右 z-order 不变。
+- **最终原因**：在 `dispatchTouchEvent` 里同步 `removeView`/`addView` 抬层，触摸分发未完成时改 WM 失败或不同步；且只 raise 一侧时易与真实叠层脱节。
+- **解决方法**：`noteUserOn` / 根布局回调一律 `post`；切层用「先挂下层再挂上层」`applyZOrder`；切换中请求进 `pending`；点击监听再补一次 `noteInteraction`。
+- **后续**：真机点展开确认对侧先收边再换层。
+
+### 2026-09-12 — 点左右卡片无业务反馈时不抬层
+
+- **功能 / 上下文**：`docs/features/11-day-schedule.md` / `OverlaySideRoot`
+- **症状**：点到已展开卡片、空白、无响应控件时，该侧不会抬到上层；只有点出动作才切层。
+- **最终原因**：`noteInteraction` 挂在各 ClickListener 里；子 View 吃触摸时根 `OnTouchListener` 收不到。
+- **解决方法**：左右根布局改为 `OverlaySideRoot`，在 `dispatchTouchEvent(ACTION_DOWN)` 一律 `noteUserOn`。
+- **后续**：无
+
+### 2026-09-12 — 左右悬浮窗互挡 + 左侧无开合动画
+
+- **功能 / 上下文**：`docs/features/11-day-schedule.md` / `OverlayLayerCoordinator`
+- **症状**：左日程与右闪记叠在一起挡住对方；左侧无滑入滑出；手动选时间时悬浮窗挡住 TimePicker。
+- **尝试过的方法**：
+  1. 仅 `raise` / `bringToFront` 调 z-order（结果：切层过硬，下层仍挡视觉）
+- **最终原因**：两侧同为 overlay 无协调层；`ScheduleOverlay` 未做左右向 entrance/exit；选时间 Activity 未临时藏窗。
+- **解决方法**：`OverlayLayerCoordinator`（点哪边抬哪边；切层先 `retractToEdge` 再 `expandFromEdge`）；左窗镜像右窗动画（负 `translationX` + Overshoot/Accelerate）；`ScheduleTimePickActivity` onCreate/onDestroy 调 `hideForTimePicker` / `restoreAfterTimePicker`。语音补时间不藏窗。
+- **后续**：真机确认切层与选时间不挡。
+
+### 2026-09-12 — 日程点选时间崩溃 + 语音后无法入库
+
+- **功能 / 上下文**：`docs/features/11-day-schedule.md` / `ScheduleOverlay`
+- **症状**：补时间面板点「点选起止时间」直接崩；语音补时间后日程加不进去。
+- **最终原因**：
+  1. 悬浮窗 `Context` 上弹 `TimePickerDialog` 无 Activity window token → BadToken / 崩
+  2. `commitDrafts` 走审查时把**新建**日程也按「开场前 1 小时锁定」拒绝
+  3. 语音对齐后 `renderFillPanel` 在时间齐了时直接 `GONE` 面板，**未调用确认入库**
+- **解决方法**：`ScheduleTimePickActivity` 选时间；新建用 `changeKind=create` 跳过锁定；面板保持到点确认 / 语音齐了自动 `confirmFillTimes`。
+
 ### 2026-09-12 — Active 拦截无效 + 重新分析极慢（非大爆炸误伤）
 
 - **功能 / 上下文**：`docs/features/05-habit-guardian.md` / `BlockerService` / `AppStoreMetaFetcher`
