@@ -20,7 +20,7 @@
 - 缺时间：补时间面板——**日期** / **时间选择器** 或 **按住语音**
 - App 策略：展开卡片后 **多选允许/禁止**，或 **按住语音让 AI 填**；写入前合理性审查，不合理拒绝
 - 锁定：仅**当天**且 `now >= start - 1h` 后不可再改时间/App 策略；未来日期可自由改（颜色仍可改）
-- 完成：卡片变绿，`foodCount +1`
+- 完成：半程后进 `ScheduleCompleteActivity` 填程度+经验；成功后卡片变绿，`foodCount +1`（详见 [15](15-schedule-complete-reorder.md)）
 - 未完成色：亮色表随机（完成态强制绿）
 
 ## 2. 模块与关键类
@@ -61,6 +61,6 @@
 
 ## 6. 搜索关键词
 
-`DualOverlayShell`、`PassthroughFrameLayout`、`DayScheduleStore`、`DayScheduleColor`、`ScheduleHud`、`ScheduleDateParse`、`ScheduleLlmClient`、`retractToEdge`、`bringSideToFront`、`save_schedule`
+`DualOverlayShell`、`PassthroughFrameLayout`、`DayScheduleStore`、`DayScheduleColor`、`ScheduleHud`、`ScheduleDateParse`、`ScheduleLlmClient`、`ScheduleCompleteActivity`、`movePending`、`retractToEdge`、`bringSideToFront`、`save_schedule`
 
 相关排障：见 `docs/TROUBLESHOOTING.md`（双窗 remove/add 闪烁、顶层再点丢焦点）

@@ -27,6 +27,90 @@
 
 ## 条目
 
+### 2026-09-13 — 好友形象不同步 / 多人只显示一个
+
+- **功能 / 上下文**：`docs/features/16-friend-pet-xp.md`
+- **症状**：房间里有多人但 overlay 只画一只；或对方仍是默认圆点/随机表情。
+- **尝试过的方法**：
+  1. 仅 `otherMembers().firstOrNull()` + 本地 `randomFileFor`（结果：多好友丢失；形象每 2.5s 重抽且不是对方的图）
+- **最终原因**：MVP 只挂一个 `friendPetView`；协议无像素传输。
+- **解决方法**：`friendPetViews` 按 userId 并排最多 4 只；`avatarHash` + `avatar`/`avatar_data` + `FriendAvatarCache`；形象生成移植自 1103-jun/AI- MikuUI。需重启 `tools/friend-server/server.py`。version 1.0.5。
+- **后续**：超大 PNG（>420KB）会被拒绝推送。
+
+### 2026-09-13 — 好友房连不上 / 看不到对方桌宠
+
+- **功能 / 上下文**：`docs/features/16-friend-pet-xp.md`
+- **症状**：填了电脑 IP 仍显示连接失败；或已连接但屏幕上只有自己的宠。
+- **尝试过的方法**：
+  1. 只填 IP 不带端口（结果：默认会用 18765，但服务未开则仍失败）
+  2. 手机用流量、电脑在 Wi‑Fi（结果：不同网段无法直连）
+- **最终原因**：需同一局域网 + PC 上 `python3 tools/friend-server/server.py` 监听 `0.0.0.0:18765` + 防火墙放行；双方同一房间码；本机需已开桌宠 overlay（`PetService`）才会并排画好友宠。
+- **解决方法**：设置 →「好友与等级」填 `电脑局域网IP:18765`；连接后确认状态为「已入房 / 房间 N 人」；点好友宠可看心情/等级。服务端说明见 `tools/friend-server/README.md`。version 1.0.4。
+- **后续**：MVP 只并排显示第一位好友；公网/账号未做。
+
+### 2026-09-13 — 拖动换序一半就松开
+
+- **功能 / 上下文**：`docs/features/15-schedule-complete-reorder.md`
+- **症状**：长按拖动能启动，换到相邻项时手势自己取消。
+- **尝试过的方法**：
+  1. 仅挂在小手柄上 + `pointerInput(id, items.map)`（结果：一换序就重建手势 / 命中区域跳走）
+- **最终原因**：换序后 layout 跳格且 `dragOffsetY` 归零，手指不再落在控件变换后的命中框内；同时 `pointerInput` key 含列表顺序导致手势协程重启。
+- **解决方法**：`key(id)`；`pointerInput(id)` 稳定；换序后 `dragOffsetY -= direction * rowHeight`；整卡接收拖动手势；拖动时禁用父级 `verticalScroll`。version 1.0.3。
+- **后续**：长按整张卡片再拖更稳。
+
+### 2026-09-13 — 真机验证：已完成日程被禁止拖，表现为「不能拖动」
+
+- **功能 / 上下文**：`docs/features/15-schedule-complete-reorder.md`
+- **症状**：用户说不能拖；手柄可见但灰。真机 dump：两条都是 `✓` 已完成，且已过开始时间。
+- **尝试过的方法**：
+  1. 长按手柄（结果：无 `pointerInput`，因 `canDrag` 对 DONE/已开始返回 false）
+- **最终原因**：排序只允许「未开始 pending」，当天两条已完成 → 拖动手势根本没挂上。
+- **解决方法**：`reorderDay` 允许当日全部条目（含已完成）重排；拖动时 `verticalScroll(enabled=false)`；真机 `input swipe` 长拖验证：顺序与时间窗已对调（路演总结 ↔ 开会）。versionName 1.0.2。
+- **后续**：长按左侧蓝色 ≡ 再上下拖；松手后时长不变、时间紧挨重排。
+
+### 2026-09-13 — 日程上下移按钮用户看不见，改成长按拖拽
+
+- **功能 / 上下文**：`docs/features/15-schedule-complete-reorder.md`
+- **症状**：用户反馈「没有按钮啊」「和之前一点变化没有」。
+- **尝试过的方法**：
+  1. 加 OutlinedButton「上移/下移」（结果：用户仍看不到 / 体感无变化）
+- **最终原因**：小控件不显眼；可能与滚动/整卡点击冲突；策略锁也曾导致点了没效果。
+- **解决方法**：改为左侧大号 `DragHandle`，`detectDragGesturesAfterLongPress` 拖拽；`DayScheduleStore.reorderPending`；列表上方提示文案；versionCode 升到 2。
+- **后续**：需 ≥2 条未开始 pending；已开始不可拖。
+
+### 2026-09-13 — 日程上下移被「策略锁定」整日误拦 / overlay 无按钮
+
+- **功能 / 上下文**：`docs/features/15-schedule-complete-reorder.md`
+- **症状**：用户反馈「没法上下移动，和之前一点变化没有」。
+- **尝试过的方法**：
+  1. 确认 APK 已装到真机且 `ScheduleTabScreen` 含箭头（结果：逻辑在，但体感仍无效）
+- **最终原因**：
+  1. `movePending` 用 `pending.any { isPolicyLocked() }`：开场前 1 小时即锁，当天任一已过/临近开始的条目会**整日禁止排序**。
+  2. 左侧桌宠日程 overlay 未做上移/下移，主路径看起来「没变化」。
+  3. 行内小箭头不显眼，且整卡 `Card(onClick)` 易抢走点击感知。
+- **解决方法**：`movePending` 改为只重排未开始条目；日程页改为显眼「上移/下移」按钮；overlay 展开卡增加同款按钮；去掉整卡 clickable。
+- **后续**：至少两条**未开始**未完成日程才能对调；已开始的不能动。
+
+### 2026-09-13 — 日程结束用通知进完成页，不后台直接拉起 Activity
+
+- **功能 / 上下文**：`docs/features/15-schedule-complete-reorder.md`
+- **症状**：期望「到点进完成页」；后台直接 `startActivity` 在 Android 10+ 常被拦。
+- **尝试过的方法**：
+  1. 仅靠 `BroadcastReceiver` 直接开 Activity（结果：后台限制下不可靠）
+- **最终原因**：后台启动 Activity 受系统限制；点通知打开是合规路径。
+- **解决方法**：`ScheduleEndScheduler` 精确闹钟 → `ScheduleEndReceiver` → 高优先级通知，`contentIntent` 指向 `ScheduleCompleteActivity`；`rescheduleAll` 先取消当日全部闹钟再挂 pending；完成时 `clearNotified`。
+- **后续**：用户需授予通知权限；OEM 若限制精确闹钟可能略延迟。
+
+### 2026-09-13 — :app 引用 reef.App 缺 WorkManager 类型
+
+- **功能 / 上下文**：`docs/features/14-md3-home-merge.md`
+- **症状**：`Cannot access 'androidx.work.Configuration.Provider' which is a supertype of 'App'`
+- **尝试过的方法**：
+  1. 把 `(application as App)` 改成可空强转（结果：仍要解析 App 超类型）
+- **最终原因**：`dev.pranav.reef.App` 实现 WorkManager `Configuration.Provider`，`:app` 未声明 `work-runtime` 时编译器无法读取该超类型。
+- **解决方法**：`:app` 增加 `implementation(libs.androidx.work.runtime.ktx)`。
+- **后续**：无。
+
 ### 2026-09-13 — 桌宠番茄钟 Compose 悬浮窗崩溃
 
 - **功能 / 上下文**：`docs/features/03-focus-timer.md`

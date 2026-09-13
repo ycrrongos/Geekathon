@@ -2,45 +2,39 @@
 
 | 项 | 内容 |
 |----|------|
-| 状态 | 已接入 |
+| 状态 | 底栏统计已恢复为 Reef **应用用量**；专注统计从 Timer 顶栏进入 |
 | 日期 | 2026-09-13 |
-| 模块 | `:app` MainActivity + `:reef` FocusStats |
+| 模块 | `:app` + `:reef` FocusStats / Usage |
 
 ## 1. 用户能看到什么
 
-- 守伴主页在「喂食/摸摸/小憩」下方有一张约 520dp 高的大卡片，内嵌 Reef **专注统计**（日/周/月、图表、会话列表）
-- 点会话可进详情；卡片内可独立滚动，不与主页 NestedScrollView 抢手势
-- 无返回键（`embedded=true`）；标题用「统计」
+- 底栏「统计」= Reef `UsageScreenWrapper`（应用用量）
+- 专注会话统计：专注页 → 番茄钟 → 顶栏图表 → `FocusStatsScreen`
 
 ## 2. 入口
 
-主页滚动即见；数据来自 `FocusStats`（与 Reef 专注配置里统计同源）。
+底栏 Stats → Usage；Timer 顶栏 → FocusStats。
 
 ## 3. 模块与关键类
 
 | 角色 | 路径 |
 |------|------|
-| 嵌入 View | `dev.pranav.reef.ui.FocusStatsEmbedView` |
-| UI | `FocusStatsScreen(embedded = true)` |
-| 宿主 | `MainActivity.bindFocusStatsCard()` / `activity_main.xml` `@id/focusStatsCard` |
+| 用量 | `UsageScreenWrapper` / `Screen.Usage` |
+| 专注统计 | `FocusStatsScreen` / `Screen.FocusStats` |
 
 ## 4. 不要做的事
 
-- 不要在 `:app` 里直接写 Compose（用 EmbedView）
-- 不要把统计改成跳转 Reef MainActivity 代替嵌入
-- 品牌仍是「守伴」；Reef MIT 署名仍在主页底部
+- 不要再把 `FocusStatsScreen(embedded=true)` 绑成底栏第二项
 
 ## 5. 验证
 
-1. `./gradlew :app:assembleDebug`
-2. 打开主页，下滑见统计大卡片；切换 Daily/Weekly/Monthly
-3. 卡片内列表可滑；主页外层仍可滑
+1. 底栏统计看到应用用量列表
+2. 从专注→番茄钟→图表能进会话统计
 
 ## 6. 搜索关键词
 
-`FocusStatsEmbedView`、`focusStatsCard`、`FocusStatsScreen`、`embedded`
+`UsageScreenWrapper`、`FocusStatsScreen`、`GuardBottomNavBar`
 
 ## 7. 相关文档
 
-- `docs/features/06-reef-focus.md`
-- `docs/features/07-miku-ui.md`
+- `docs/features/14-md3-home-merge.md`
