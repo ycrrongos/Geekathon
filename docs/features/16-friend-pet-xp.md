@@ -9,9 +9,9 @@
 ## 1. 用户能看到什么
 
 - **好友房**：填写电脑上的服务器地址与房间码，连接后**最多 4 位**好友的桌宠并排出现在自己桌宠右侧；可点好友宠查看心情/饱食/等级。
-- **自定义形象**：好友页可快速本地绘制 / 精细千问生成 / 上传参考图（抠透明背景）。形象经房间同步，好友页横滑可看每人自己的形象。
+- **自定义形象**：主体类型 / 画面风格 / 核心特征；**快速本地绘制**或**精细千问 AI 生图**；支持上传参考图「按图 AI 生成」或直接使用；强制透明背景。入口：好友页内嵌面板，或设置 →「定制形象」→ `PetAppearanceActivity`。
 - **习惯等级**：今日同时段屏幕使用相对昨日减少时获得经验；升级曲线类似 Minecraft。
-- 入口：设置栏「好友与等级」→ `FriendActivity`；桌宠需已开启悬浮窗。
+- 入口：首页「好友与等级」；桌宠需已开启悬浮窗。
 
 不做什么：
 
@@ -28,7 +28,7 @@
 | 协议 | `FriendProtocol.kt`（`state` / `avatar` / `avatar_need`） |
 | 客户端 | `FriendClient.kt`、`FriendPrefs.kt`、`FriendAvatarCache.kt` |
 | 经验 | `HabitXpStore.kt`、`HabitXpSettler.kt` |
-| 自定义形象 | `PetAppearanceGenerator` / `PetAppearanceAgent` / `StyledPetRenderer`（移植自 [1103-jun/AI- MikuUI](https://github.com/1103-jun/AI-)） |
+| 自定义形象 | `AppearanceCustomizeCard` / `PetAppearanceActivity` + `PetAppearanceGenerator`（移植自 [1103-jun/AI-](https://github.com/1103-jun/AI-)） |
 | 资源 | `PetAssetRepository.installGeneratedAppearance` → `custom_generated.png` |
 | 多宠 | `PetService` 内 `friendPetViews`（userId → PetCanvas） |
 | UI | `FriendActivity` |

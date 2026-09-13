@@ -27,6 +27,15 @@
 
 ## 条目
 
+### 2026-09-13 — 定制形象只有特征框、精细 AI 不好用
+
+- **功能 / 上下文**：`docs/features/16-friend-pet-xp.md`（形象来自 [1103-jun/AI-](https://github.com/1103-jun/AI-)）
+- **症状**：好友页定制缺主体/风格、无进度、文生图与按图生成混在同一按钮。
+- **尝试过的方法**：精简 Compose 面板只留 features + freeIdea（结果：PromptGuide 缺 subject/artStyle，精细模式效果差）
+- **最终原因**：UI 未对齐 MikuUI 完整引导字段与「按图 AI 生成」独立入口。
+- **解决方法**：`AppearanceCustomizeCard` + `PetAppearanceActivity`；补齐主体/风格数组、进度文案、文生图 / 按图 AI / 直传三按钮。version 1.0.7。
+- **后续**：精细模式需 `dashscope.api.key`。
+
 ### 2026-09-13 — 好友形象不同步 / 多人只显示一个
 
 - **功能 / 上下文**：`docs/features/16-friend-pet-xp.md`
