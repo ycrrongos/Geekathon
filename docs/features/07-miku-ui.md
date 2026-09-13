@@ -43,7 +43,7 @@
 - 品牌字符串全部「守伴」，不出现 Miku
 - 样式名 `Widget.GuardPet.Button.*`（非 Widget.Miku）
 - `PetPanelOverlay` 用 `ContextThemeWrapper(service, Theme_DesktopPet)` inflate，避免 Service 无主题导致 `?attr/` 崩溃；面板按钮背景已用 `@android:color/transparent`
-- 保留 MainActivity 既有 ID：手势 Spinner、focus/reef/flash、`flashNoteContainer`、`focusAttribution` 等
+- 保留 MainActivity 既有 ID：手势 Spinner、focus/reef/flash、`flashNoteContainer`、`focusAttribution` 等；主页另有 `focusStatsCard` 嵌入 Reef 专注统计（见 `13-home-focus-stats.md`）
 
 ## 5. 不要做的事
 

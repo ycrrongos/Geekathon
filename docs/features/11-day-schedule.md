@@ -3,7 +3,7 @@
 | 项 | 内容 |
 |----|------|
 | 状态 | 已接入 |
-| 日期 | 2026-09-13 |
+| 日期 | 2026-09-12 |
 | 模块 | `:app`（存储 / overlay / LLM）+ `:reef` HabitHook 时段拦截 |
 
 ## 1. 用户能看到什么
@@ -14,29 +14,27 @@
 - 手动拖拽选时间（`ScheduleTimePickActivity`）时**隐藏左右悬浮窗**，关掉时间页再恢复（语音补时间不隐藏）
 - 录入：
   - 左侧「从日历导入」（需 `READ_CALENDAR`）
-  - 闪记分类选「日程」保存 → DeepSeek（或本地启发式）拆成规范日程
-- 缺时间：补时间面板——**时间选择器** 或 **按住语音向 AI 说各任务时间**
+  - 闪记分类选「日程」→ 按钮「保存日程」→ AI 可拆出**多天**条目；**只写 DayScheduleStore，不进闪记列表**；补时间面板可改每条日期
+- 日程页「AI 整理」同样可创建/修改非今天日程
+- 颜色：新建从 Google Calendar 风格**亮色表**随机取色；列表点色条 / overlay「换色」/ 编辑对话框色点可改
+- 缺时间：补时间面板——**日期** / **时间选择器** 或 **按住语音**
 - App 策略：展开卡片后 **多选允许/禁止**，或 **按住语音让 AI 填**；写入前合理性审查，不合理拒绝
-- 语音策略和写入前审查请求前先用带鉴权的 HTTP `GET /models` 探测模型 API；探测失败时不发聊天请求，按本地应用名规则处理并提示原因
-- 日程语音首次使用若没有麦克风权限，会打开独立的 `MicPermissionActivity`；授权完成后需重新按住按钮开始录音（不会把已经结束的长按自动变成长录音）
-- 锁定：`now >= start - 1h` 后不可再改时间/App 策略
+- 锁定：仅**当天**且 `now >= start - 1h` 后不可再改时间/App 策略；未来日期可自由改（颜色仍可改）
 - 完成：卡片变绿，`foodCount +1`
-- 未完成色：随机主色（避开完成绿），深浅由历史完成难度决定
+- 未完成色：亮色表随机（完成态强制绿）
 
 ## 2. 模块与关键类
 
 | 角色 | 路径 |
 |------|------|
-| 存储 | `DayScheduleStore` / `DaySchedule`（`day_schedules.db`） |
+| 存储 | `DayScheduleStore` / `DaySchedule`（`day_schedules.db`）；色板 `DayScheduleColor` |
 | 日历 | `CalendarScheduleImporter`、`CalendarPermissionActivity` |
 | AI | `ScheduleLlmClient`（复用 `HabitLlmClient`） |
-| API 预检 | `HabitLlmClient.probeModelApi`（HTTP `/models`，不是 ICMP ping） |
 | 左侧 UI | `ScheduleHud` / `ScheduleOverlay`、`overlay_day_schedules.xml` |
 | 单窗宿主 | `DualOverlayShell` + `PassthroughFrameLayout`（左右共一个 overlay） |
 | 叠层协调 | `OverlayLayerCoordinator`（elevation 切层 / 收边再展开 / 选时间隐藏） |
 | 手动选时 | `ScheduleTimePickActivity`（隐藏 overlay） |
-| 闪记接入 | `FlashNoteHud` 打开时拉起日程；`FlashNoteOverlay.saveComposer` 日程分类走 AI |
-| 麦克风授权 | `MicPermissionActivity.scheduleIntent`；授权后回到日程提示重新按住 |
+| 闪记接入 | `FlashNoteHud` 打开时拉起日程；`FlashNoteOverlay.saveComposer` 日程分类只走 AI / `DayScheduleStore` |
 | 拦截 | `HabitGuardian.evaluateActiveDaySchedule` |
 | 初始化 | `GuardInitProvider` → `DayScheduleStore.init` |
 
@@ -60,11 +58,9 @@
 - 切层：`retractToEdge` → `DualOverlayShell.bringSideToFront`（elevation）→ `expandFromEdge`
 - 宿主全屏透明，空白触摸放行（`PassthroughFrameLayout`）；IME focus 改宿主 flags
 - 左滑入：`translationX = -slideDistance`；右滑入为正；插值器与闪记一致
-- 日程 LLM 调用在 `io` 线程执行；语音策略先探测 `/models`，策略解析或审查失败均回退本地规则/放行，不阻塞 overlay 主线程
-- `/models` 探测使用 3 秒连接/读取超时；它验证的是 HTTP API 可用性，不依赖 ICMP
 
 ## 6. 搜索关键词
 
-`DualOverlayShell`、`PassthroughFrameLayout`、`DayScheduleStore`、`ScheduleHud`、`OverlayLayerCoordinator`、`ScheduleTimePickActivity`、`ScheduleLlmClient`、`HabitLlmClient.probeModelApi`、`MicPermissionActivity.scheduleIntent`、`retractToEdge`、`bringSideToFront`
+`DualOverlayShell`、`PassthroughFrameLayout`、`DayScheduleStore`、`DayScheduleColor`、`ScheduleHud`、`ScheduleDateParse`、`ScheduleLlmClient`、`retractToEdge`、`bringSideToFront`、`save_schedule`
 
-相关排障：见 `docs/TROUBLESHOOTING.md`（语音策略 API 不可达/请求卡住、日程语音未申请麦克风、双窗 remove/add 闪烁、顶层再点丢焦点）
+相关排障：见 `docs/TROUBLESHOOTING.md`（双窗 remove/add 闪烁、顶层再点丢焦点）

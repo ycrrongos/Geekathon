@@ -27,16 +27,30 @@
 
 ## 条目
 
-### 2026-09-13 — 日程语音策略请求卡住且未申请麦克风
+### 2026-09-13 — 桌宠番茄钟 Compose 悬浮窗崩溃
 
-- **功能 / 上下文**：`docs/features/11-day-schedule.md` / `ScheduleOverlay` / `ScheduleLlmClient`
-- **症状**：日程卡片按住语音策略后，模型网络不可用时长时间停在解析状态；首次使用日程语音没有弹出麦克风授权，录音无法开始。
+- **功能 / 上下文**：`docs/features/03-focus-timer.md`
+- **症状**：桌宠菜单开番茄钟，应用直接没。
 - **尝试过的方法**：
-  1. 直接调用 `/chat/completions`（结果：网络/DNS 不通时会等到较长的连接或读取超时）
-  2. 把日程语音直接复用闪记录音（结果：复用了录音器，但没有复用闪记 overlay 的授权入口）
-- **最终原因**：策略解析和后续合理性审查没有在请求前确认模型 HTTP API 可达；日程 overlay 的长按入口也绕过了 `RECORD_AUDIO` 动态授权。
-- **解决方法**：`HabitLlmClient.probeModelApi` 在策略解析、日程审查前用带鉴权的 `GET /models` 做 3 秒 HTTP 探测（不用 ICMP）；失败时不发聊天请求，策略按本地应用名规则处理、审查按本地规则放行。`ScheduleOverlay` 缺权限时启动独立 task 的 `MicPermissionActivity.scheduleIntent`；授权后只提示用户重新按住，避免原长按已结束却启动无法停止的录音。
-- **后续**：`/models` 是 OpenAI 兼容 API 的健康检查；若自定义服务没有该端点，需提供兼容的 `/models`，或调整探测实现。真机应分别验证授权后再次录音、API 不可达时快速回退。
+  1. Service `TYPE_APPLICATION_OVERLAY` + `ComposeView` + 自建 `LifecycleOwner`（结果：崩溃；`SavedStateRegistryController.performRestore` 未先 `performAttach`，且 DESTROYED 后复用 Lifecycle）
+- **最终原因**：Compose/Navigation 需要完整 Activity 级 Lifecycle/SavedState/BackDispatcher；挂在 Service overlay 上极易崩。
+- **解决方法**：改为 `FocusTimerActivity`（BigBang 同款透明独立 task）嵌 `OverlayFocusTimerView`；仍用 `OverlayFocusSession` 写 `focus_mode`，不启 FocusModeService。删除 `FocusTimerOverlay`。
+- **后续**：窗是 Activity 而非 WM overlay，层级与大爆炸一致。
+
+### 2026-09-13 — 番茄钟改为提取框 + 内嵌 Reef 专注 UI
+
+- **功能 / 上下文**：`docs/features/03-focus-timer.md`
+- **症状**：旧方案为左上拉环 + 中央模拟钟；用户要求改成提取文字同款窗口并套 Reef 专注模式。
+- **最终原因**：产品交互升级；仍不能 `startForegroundService(FocusModeService)`（与 PetService 抢 specialUse）。
+- **解决方法**：初版挂 Service overlay（后因崩溃改为 Activity，见上条）；`:reef` `OverlayFocusTimerView` + `OverlayFocusSession`；删除 `PullTabView`/`AnalogTimerView`。
+- **后续**：见「桌宠番茄钟 Compose 悬浮窗崩溃」。
+
+### 2026-09-13 — 多日日程页补齐（Codex 半成品）
+
+- **功能 / 上下文**：`docs/features/12-schedule-page.md`
+- **症状**：已有 `ScheduleActivity` / 布局 / Calendar 依赖，但缺 Manifest、Store API、AI `applyInstruction`、导入多日、入口与字符串，无法编译运行。
+- **解决方法**：补 `forDate`/`countsBetween`/`between`、`importUpcoming`、`applyInstruction`、Manifest、主页与桌宠菜单入口、`CalendarPermissionActivity.EXTRA_RETURN_TO_SCHEDULE`、文案与文档。
+- **后续**：真机走一遍翻月/新建/AI/导入/进行中守护。
 
 ### 2026-09-12 — 左右切层改 DualOverlayShell 单窗
 

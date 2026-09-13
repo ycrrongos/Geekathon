@@ -98,13 +98,11 @@ HabitHook.evaluator = { host, pkg -> HabitGuardian.evaluate(host, pkg) }
 
 ### 番茄钟 overlay
 
-两块 `WRAP_CONTENT` 悬浮窗，其余区域把触摸交给下层应用：
+桌宠打开后启动 **透明独立 task** `FocusTimerActivity`（暗幕 + 圆角窗，外观对齐提取文字/大爆炸）；窗内嵌 Reef `TimerContent`（`OverlayFocusTimerView`）。
 
-- 左上角 `PullTabView`：`gravity=TOP|START`，`x=0,y=0`，拉动伸长绿带并改分钟
-- 屏幕中央 `AnalogTimerView`：阴影表盘，时间写在表盘内
-
-倒计时本地 `Handler`。开始时 `focus_mode=true`，结束/关闭时清掉。  
-全屏 `MATCH_PARENT` overlay 会吞掉下层触摸，不要用。
+倒计时在 `OverlayFocusSession` 跑。开始时 `focus_mode=true`，结束/关闭时清掉。  
+**不要** `startForegroundService(FocusModeService)`（与 `PetService` 抢第二条 specialUse FGS）。  
+**不要**再把 Compose 专注 UI 挂到 `PetService` 的 `TYPE_APPLICATION_OVERLAY`（易因 SavedState/Lifecycle 崩溃）。
 
 ### 权限
 
@@ -173,7 +171,7 @@ JDK 17、compileSdk 37、minSdk 26。Gradle 代理写在 `GuardPet/gradle.proper
 - [ ] 改的是 `GuardPet/`，没有动 `MIKU-仅参考/`
 - [ ] 用户可见名仍是 **守伴**；Reef 署名仍在
 - [ ] 没有新增第二条 specialUse FGS，也没有第二个无障碍服务
-- [ ] 大爆炸仍是透明独立 task Activity；番茄钟仍是左上拉环 + 中央时钟
+- [ ] 大爆炸仍是透明独立 task Activity；番茄钟为 `FocusTimerActivity`（暗幕圆角窗 + Reef 专注 UI，不启 FocusModeService）
 - [ ] `docs/features/` 已更新（新功能有索引行；文档含搜索关键词）
 - [ ] 坑已写入 `docs/TROUBLESHOOTING.md`（最新置顶；同一问题用「复现 / 修订」）
 - [ ] 不知道的事先查了文档/代码，再上网搜，没有凭记忆写 OEM

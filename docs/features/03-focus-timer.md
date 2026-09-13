@@ -1,26 +1,60 @@
 # 番茄钟 overlay
 
-## 用户可见行为
+| 项 | 内容 |
+|----|------|
+| 状态 | 已接入 |
+| 日期 | 2026-09-13 |
+| 模块 | `:app` `FocusTimerActivity` + `:reef` `TimerContent` / `OverlayFocusSession` |
 
-当前应用上方：左上角绿色拉环，屏幕中央带阴影的 60 分模拟钟，时间写在表盘内。拉动拉环伸长并改时长；点时钟开始/暂停；长按关闭。拉环和时钟以外的区域可点下层应用。
+## 1. 用户能看到什么
 
-## 入口
+- 桌宠打开番茄钟：出现与**提取文字 / 大爆炸**同款的透明暗幕 + 品牌色描边圆角窗
+- 窗内是 Reef **专注模式** UI（计时 / 正计时 / 番茄钟、开始/暂停/统计等）
+- 左下「取消」或系统返回关闭；进行中关闭会取消会话并清 `focus_mode`
+- 主页「专注配置」仍进 Reef 设置页，不是这个窗
 
-桌宠菜单 / 控制小窗 / 主页「番茄钟」（需桌宠已开）。主页「专注配置」进 Reef 设置，不是这个 overlay。
+## 2. 入口
 
-## 模块与关键类
+桌宠菜单 / 控制小窗 / 主页「番茄钟」→ `PetService.openFocusTimer()` → `FocusTimerActivity`。
 
-- `FocusTimerOverlay`、`PullTabView`、`AnalogTimerView`
-- 拦截：`prefs["focus_mode"]`，由 `BlockerService` 读取
+## 3. 模块与关键类
 
-## 权限
+| 角色 | 路径 |
+|------|------|
+| 透明独立 task 窗 | `FocusTimerActivity`（`taskAffinity=…focustimer`，主题 `Theme.DesktopPet.BigBang`） |
+| Reef 专注面板 | `dev.pranav.reef.timer.OverlayFocusTimerView` |
+| 本地会话（写 prefs） | `dev.pranav.reef.timer.OverlayFocusSession` |
+| UI | Reef `TimerContent` |
+| 拦截 | `prefs["focus_mode"]` → `BlockerService` |
 
-悬浮窗；拦截另需无障碍 + 用量访问
+## 4. 权限
 
-## 不要做的事
+不依赖悬浮窗即可打开（Activity）。拦截另需无障碍 + 用量访问。
 
-不要 `startForegroundService(FocusModeService)`（第二条 specialUse FGS + 未初始化 `App.colorScheme` 会崩）。不要用全屏 overlay。
+## 5. 不要做的事
 
-## 验证步骤
+- **不要** `startForegroundService(FocusModeService)`（与 PetService 抢 specialUse FGS）
+- **不要**再把 Compose `TimerContent` 直接挂到 `PetService` 的 `TYPE_APPLICATION_OVERLAY` 上（SavedState/Lifecycle 易崩）
+- 不要恢复旧的 `PullTabView` + `AnalogTimerView`
 
-拉环在左上且拉动时绿带变长、指针和表盘数字一起变；开始后分心应用被拦；下层空白处可点。
+## 6. 实现要点
+
+- Activity 自身即 Lifecycle / SavedState / OnBackPressed owner，再 `OverlayFocusTimerView.bindTreeOwners(...)`
+- 开始会话：写 prefs + 本地 Handler；**不**启 FocusModeService
+- `HabitRewardTracker` 由 Activity 回调；结束时 `ACTION_SHOW_PET` 再显示桌宠
+
+## 7. 验证
+
+1. `./gradlew :app:assembleDebug`
+2. 开桌宠 → 番茄钟：暗幕+圆角窗，内为 Reef 专注 UI，不崩
+3. 开始简单计时后分心应用被拦；取消/结束后面板可再开
+
+## 8. 搜索关键词
+
+`FocusTimerActivity`、`OverlayFocusTimerView`、`OverlayFocusSession`、`TimerContent`、`focus_mode`、`FocusModeService`
+
+## 9. 相关文档
+
+- `docs/TROUBLESHOOTING.md`：番茄钟 Service overlay Compose 崩溃；`2026-09-12 — 番茄钟 overlay 启动即崩溃`
+- `docs/features/06-reef-focus.md`
+- `AGENTS.md`：一条 specialUse FGS
