@@ -55,8 +55,9 @@
 ## 5. 实现要点
 
 - 交互：根布局 `OverlaySideRoot.dispatchTouchEvent` 任意 `ACTION_DOWN` 即 `noteUserOn`（不要求业务有反馈）；已在顶层则直接忽略
-- 切层：`retractToEdge` → `DualOverlayShell.bringSideToFront`（elevation）→ `expandFromEdge`
-- 宿主全屏透明，空白触摸放行（`PassthroughFrameLayout`）；IME focus 改宿主 flags
+- 切层：`retractToEdge` → `DualOverlayShell.bringSideToFront`（elevation/`translationZ`）→ `expandFromEdge`；动画 onEnd 有超时/`once` 兜底，防止 `switching` 死锁
+- 重叠命中：`PassthroughFrameLayout` **上层 hit 优先**；仅触点落在下层露出区域（上层 hitRect 不含该点）时才切到下层。不要用几何中心选侧（会误抬下层）。
+- 宿主全屏透明，空白触摸放行；IME focus 改宿主 flags
 - 左滑入：`translationX = -slideDistance`；右滑入为正；插值器与闪记一致
 
 ## 6. 搜索关键词

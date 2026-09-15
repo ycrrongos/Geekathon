@@ -27,7 +27,9 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Set
 
 LOG = logging.getLogger("friend-server")
-MAX_AVATAR_B64 = 600_000
+# asyncio StreamReader.readline 默认 limit=64KiB，形象 base64 远超会直接 ValueError 断线
+MAX_AVATAR_B64 = 900_000
+STREAM_LIMIT = MAX_AVATAR_B64 + 64_000
 
 
 @dataclass
@@ -72,8 +74,23 @@ class FriendServer:
                         continue
                     pet = msg.get("pet") or {}
                     if isinstance(pet, dict):
-                        self.members[user_id].pet = pet
-                        await self._broadcast_room(self.members[user_id].room)
+                        member = self.members[user_id]
+                        merged = dict(pet)
+                        # 心跳若暂时没带 hash，保留服务端已知形象，避免改形后被空 hash 冲掉
+                        if not str(merged.get("avatarHash") or "").strip() and member.avatar_hash:
+                            merged["avatarHash"] = member.avatar_hash
+                        member.pet = merged
+                        ah = str(merged.get("avatarHash") or "").strip()
+                        if ah:
+                            member.avatar_hash = ah
+                        LOG.info(
+                            "state %s mood=%s hunger=%s anim=%s",
+                            user_id,
+                            merged.get("mood"),
+                            merged.get("hunger"),
+                            merged.get("state"),
+                        )
+                        await self._broadcast_room(member.room)
                 elif mtype == "avatar":
                     if not user_id or user_id not in self.members:
                         await self._send(writer, {"type": "error", "message": "say hello first"})
@@ -89,6 +106,9 @@ class FriendServer:
                     await self._send(writer, {"type": "error", "message": f"unknown type {mtype}"})
         except (ConnectionResetError, asyncio.IncompleteReadError):
             pass
+        except ValueError as e:
+            # 常见：chunk exceed the limit（未抬高 STREAM_LIMIT 时）
+            LOG.warning("protocol error from %s: %s", peer, e)
         finally:
             if user_id:
                 await self._leave(user_id)
@@ -229,9 +249,9 @@ class FriendServer:
 
 async def main(host: str, port: int) -> None:
     server = FriendServer()
-    srv = await asyncio.start_server(server.handle, host, port)
+    srv = await asyncio.start_server(server.handle, host, port, limit=STREAM_LIMIT)
     addrs = ", ".join(str(s.getsockname()) for s in srv.sockets or [])
-    LOG.info("listening on %s", addrs)
+    LOG.info("listening on %s (stream limit=%d)", addrs, STREAM_LIMIT)
     async with srv:
         await srv.serve_forever()
 

@@ -27,6 +27,69 @@
 
 ## 条目
 
+### 2026-09-15 — 点上层控件误触发下层收边再展开
+
+- **功能 / 上下文**：`docs/features/11-day-schedule.md` / `PassthroughFrameLayout`
+- **症状**：点右侧闪记（上层）盖住左侧位置的按钮时，左侧先收边再展开，像切到下层又弹回。
+- **尝试过的方法**：
+  1. 按触点到面板中心距离选侧（结果：上层控件落在更靠近下层中心时误抬下层）
+- **最终原因**：几何命中与 z-order 脱节；`noteUserOn(下层)` 会跑完整 retract/expand。
+- **解决方法**：重叠区上层 hitRect 优先；仅上层未覆盖的点才命中下层并 `noteUserOn`。version **1.0.11**。
+- **后续**：无
+
+### 2026-09-13 — 左右悬浮窗无法切层（右侧一直压住左侧）
+
+- **功能 / 上下文**：`docs/features/11-day-schedule.md` / `OverlayLayerCoordinator` / `PassthroughFrameLayout`
+- **症状**：闪记（右）一直在上层；点日程（左）仍在下层，无法切换。
+- **尝试过的方法**：
+  1. 仅 elevation/bringToFront（结果：动画 onEnd 丢失后 `switching` 死锁，或重叠区命中顺序永远偏右）
+- **最终原因**：收边/展开 `withEndAction` 在 `removeAllViews`/cancel 时不回调，`switching=true` 永久卡住；左右面板在窄屏重叠时按 z-order 命中，右侧 flash 抢走左侧点击。
+- **解决方法**：切层 watchdog + once/超时兜底；重叠区按触点几何中心选侧；`translationZ` 同步 elevation；attach 时打 `overlay_side_tag`。version **1.0.10**。
+- **后续**：无
+
+### 2026-09-13 — 房间成员心情永远 70/60、动作不同步
+
+- **功能 / 上下文**：`docs/features/16-friend-pet-xp.md`
+- **症状**：本机心情/饱食已是 29/44，好友页成员卡仍显示默认 70/60；旁宠无动作同步。服务端日志只有 hello/avatar，几乎无 state。
+- **尝试过的方法**：
+  1. overlay 动效与 pushLocalFriendState（结果：本机仍发不出 state）
+- **最终原因**：`FriendClient` 用**单线程** `io` 既跑 `readLine` 循环，又 `io.execute { writeRaw(state) }`。读阻塞期间所有 state/后续 avatar 任务永远排在队列后面执行不了；房间 `pet` 为空，客户端 `fromJson` 填默认 70/60。
+- **解决方法**：读写分离——写走 `synchronized(writeRaw)`，可在任意线程发；入房立刻推 state；2s 心跳；`reportAnimState`；乐观更新本机成员卡。version **1.0.9**。需重装并重连房间。
+- **后续**：无
+
+### 2026-09-13 — 好友心情/饱食与动画不同步
+
+- **功能 / 上下文**：`docs/features/16-friend-pet-xp.md`
+- **症状**：同房后对方桌宠几乎不动；点好友宠或成员卡看不到对方心情/饱食变化。
+- **尝试过的方法**：
+  1. 协议里已有 `mood`/`hunger`/`state` 字段（结果：数值有广播，但 UI/动效未跟）
+- **最终原因**：
+  1. 有定制形象时 overlay 用 `avatar:hash` 当 showKey，**故意忽略 `state`**，好友宠永远静态图；
+  2. 收到 `room` 广播又 `sendPetState`，互相打爆；走动每帧全量 sync；
+  3. 好友页成员卡只显示心情不显示饱食/状态。
+- **解决方法**：形象与动效分离——定制图仍显示，按对方 `state`/`mood`/`hunger` 做 bob/睡觉变暗等；`pushLocalFriendState` 与 `layoutFriendOverlays` 拆开，房间回调只布局；状态变化立刻推送；成员卡显示心/饱/state。version **1.0.8**。
+- **后续**：定制形象仍是单张 PNG，无法像素级复刻对方 GIF；动效用位移/透明度近似。
+
+### 2026-09-13 — 改形象后房内好友看不到更新
+
+- **功能 / 上下文**：`docs/features/16-friend-pet-xp.md`
+- **症状**：已在房间内，一方换定制形象，另一方 overlay / 成员列表仍是旧图。
+- **尝试过的方法**：
+  1. 仅 `pushLocalAvatar` + `avatar_data` 写缓存（结果：成员 `avatarHash` 未即时改，overlay 仍按旧 hash 取图）
+- **最终原因**：`appearancePayload` 每次新建仓库重压缩，哈希可能漂移；`avatar_data` 未回写 `members[].pet.avatarHash`；`state` 心跳可能冲掉服务端 hash。
+- **解决方法**：按源文件缓存同步载荷；收 `avatar_data` 时更新对应成员 hash；服务端 state 合并保留 avatarHash；overlay 优先按缓存形象刷新。需重启 friend-server。
+- **后续**：无
+
+### 2026-09-13 — 好友房连上立刻断
+
+- **功能 / 上下文**：`docs/features/16-friend-pet-xp.md`
+- **症状**：手机显示已连接后马上「已断开」；服务端日志 `ValueError: Separator is not found, and chunk exceed the limit`，随后 `leave` / `disconnect`。
+- **尝试过的方法**：
+  1. 只查防火墙 / 端口（结果：能连上，断在入房后推送形象）
+- **最终原因**：入房后客户端立刻发整行 `avatar` base64；asyncio `StreamReader.readline` 默认 limit=64KiB，大图超限直接抛错断连接。
+- **解决方法**：`server.py` 启动时 `limit=STREAM_LIMIT`（约 1MB）；客户端 `appearancePayload` 同步前缩到边长≤256 的 PNG。重启 `python3 tools/friend-server/server.py`。
+- **后续**：超大图仍可能失败；可再改成分块协议。
+
 ### 2026-09-13 — 定制形象只有特征框、精细 AI 不好用
 
 - **功能 / 上下文**：`docs/features/16-friend-pet-xp.md`（形象来自 [1103-jun/AI-](https://github.com/1103-jun/AI-)）

@@ -12,7 +12,10 @@
   - **待办**：黄→红 6 档紧急度（写作时可选色点；列表可点色点切换）
   - **其他**：银灰
   - **日程**：见下；不出现在闪记列表
-- 分类选「日程」时按钮文案为 **「保存日程」**（其它分类为「保存笔记」）。保存后只走富日程 AI 管线并写入 `DayScheduleStore`，**不写入闪记列表**。
+- 分类选「日程」时按钮为 **「保存日程」**；其它分类为 **「AI 整理保存」**——按类型（灵感/日记/待办/其他）经 `FlashNoteLlmClient` 整理后再写入闪记（无 API Key 时本地启发式）。
+- **展开卡片转换**：
+  - **待办** →「转为日程」：走日程 AI 管线；成功入库后删除该待办
+  - **灵感** →「转为日程」/「转为待办」：生成日程或新待办，**不删除**原灵感
 - 带录音的卡片有播放按钮：重放 / 暂停 / 继续。展开后右上角 × 收起卡片。
 - 主 App 日记列表每条左侧有同步色点（按分类固定色 / 待办紧急度）。
 - 主页权限状态含「离线语音模型：已安装/未安装」。
@@ -30,50 +33,45 @@
 ## 模块与关键类
 
 - `FlashNoteHud` / `FlashNoteOverlay`：右侧 overlay（打开时联动 `ScheduleHud`）
+- `FlashNoteLlmClient`：非日程分类 AI 整理
 - `FlashNoteColors`：`FlashNoteCategory` / `FlashNoteColor` / `DayScheduleColor`
 - `FlashNoteStore`（SQLite，含 `color`、`audio_path`）；`all()` 过滤掉 `SCHEDULE`
-- 富日程：`DayScheduleStore` / `ScheduleOverlay`（见 `11-day-schedule.md`）
+- 富日程：`DayScheduleStore` / `ScheduleOverlay`（见 `11-day-schedule.md`）；`ScheduleHud.showFillTimes(..., afterCommit)`
 - `FlashNoteRecorder` / `FlashNotePlayer`：录音与回放
-- `FlashNotePlayActivity`：1px 透明独立 task。Android 16 AudioHardening 会静音没有前台 Activity 的后台播放（本机为后刷原生 AOSP，不是 ColorOS）；overlay 点播放时由无障碍服务（没有则桌宠服务）拉起这个 Activity，播完或停止后关掉。不要做成全屏窗盖住下层应用。
-- `MicPermissionActivity`：独立 task 申请麦克风，避免把守伴主页抬到前台
+- `FlashNotePlayActivity`：1px 透明独立 task
+- `MicPermissionActivity`：独立 task 申请麦克风
 - `GuardInitProvider` 里 `FlashNoteStore.init`、`DayScheduleStore.init`
-- 离线 ASR：`SenseVoiceAsr` + `SenseVoiceModelStore`；模型在独立 APK `:sensevoice-pack`（`com.geekathon.guardpet.sensevoice`），详见 `docs/features/09-sensevoice-asr.md`
-
-音频文件在 `filesDir/flash_audio/`，WAV（AudioRecord）。播放走 AudioTrack，不经过 MediaPlayer。overlay 点播放不要直接在 Service 里出声，必须经 `FlashNotePlayActivity`。
+- 离线 ASR：见 `docs/features/09-sensevoice-asr.md`
 
 ## 权限
 
 - 显示：`SYSTEM_ALERT_WINDOW`
-- 录音 / 听写：麦克风。从 overlay 申请时走 `MicPermissionActivity`（独立 `taskAffinity`）
-- 日程日历导入：`READ_CALENDAR`（见 `11-day-schedule.md`）
+- 录音 / 听写：麦克风。从 overlay 申请时走 `MicPermissionActivity`
+- 日程日历导入：`READ_CALENDAR`
+- AI 整理：作息页 DeepSeek API Key（`HabitPolicyStore.llmApiKey`）；缺 Key 本地规则
 
 ## 不要做的事
 
 - 不要用 `MATCH_PARENT` 全屏 overlay 盖住下层触摸。
-- 不要新增 `microphone` 类型的**第二条** FGS。录音时给已有 `PetService` 临时加上 `microphone` 类型即可。
+- 不要新增 `microphone` 类型的**第二条** FGS。
 - 不要再注册第二个无障碍服务。
-- 列表浏览时 overlay 要带 `FLAG_NOT_FOCUSABLE`，避免抢走下层输入；写作时才去掉该 flag 以便 IME。
-- overlay 点播放不要直接在 Service 里 `AudioTrack.play()`。必须经 `FlashNotePlayActivity`，否则 Android 16 会静音后台播放。
-- overlay 布局不要用 `?attr/`（从 Service inflate 会崩）。
 - **不要把「日程」分类再写入 `FlashNoteStore`**；只进 `DayScheduleStore`。
-- **不要恢复用户自选闪记色板**（除待办紧急度 6 档）。
+- **灵感转日程/待办后不要删原灵感**；待办转日程成功后可删待办。
+- 左右叠层重叠区不要用几何中心抢命中（见 `PassthroughFrameLayout`：上层优先）。
 
 ## 验证步骤
 
-1. 把手势分别绑到「闪记列表」和「开始闪记」。
-2. 开始闪记：打字保存一条；再录音保存一条；打开后左侧应有日程栏。
-3. 灵感卡片应为黄绿渐变；日记太阳黄；其他银灰；待办可改紧急度色点。
-4. 选「日程」时按钮为「保存日程」；保存后闪记列表**不出现**该条，左侧/日程页有新日程。
-5. 语音卡片点播放：可暂停、再点继续、播完可重放。在微信等其他 App 上层点播放也要有声音，且不要把守伴主页抬上来。
-6. 写作时下层应用仍可点悬浮窗以外区域。
+1. 非日程分类写一段话 →「AI 整理保存」→ 列表为整理后文案。
+2. 展开待办 →「转为日程」→ 左侧出现日程，待办消失（需补时间时确认后消失）。
+3. 展开灵感 →「转为待办」→ 多一条待办，灵感仍在；「转为日程」同理保留灵感。
+4. 左右叠层：点上层控件（即使压在下层位置上）不应先收下层再弹回；只有点下层露出区域才切层。
 
 ## 搜索关键词
 
-`FlashNoteHud`、`FlashNoteOverlay`、`FlashNoteColor`、`FlashNoteColors`、`DayScheduleColor`、`save_schedule`、`FlashNotePlayActivity`、`FlashNotePlayer`、`ScheduleHud`、`DayScheduleStore`、`AudioHardening`、`FLAG_NOT_FOCUSABLE`、`audio_path`、`OvershootInterpolator`、`needsEntrance`、`playExitAnimation`、`animateCardExpand`、`SenseVoiceAsr`、`voice_transcribing`、`VolumeChordFlashNote`
+`FlashNoteHud`、`FlashNoteOverlay`、`FlashNoteLlmClient`、`flash_convert_to_schedule`、`flash_note_organize_save`、`convertIdeaToTodo`、`PassthroughFrameLayout`、`save_schedule`、`ScheduleHud.showFillTimes`
 
 ## 相关文档
 
-- `docs/TROUBLESHOOTING.md`：`2026-09-12 — 其他 App 上层点闪记播放仍无声`；`2026-09-12 — SenseVoice 模型包 / AAR / createPackageContext`
-- `docs/features/09-sensevoice-asr.md`
 - `docs/features/11-day-schedule.md`
-- `AGENTS.md`：一条 FGS、一个无障碍服务、记笔记；离线模型在 sensevoice-pack
+- `docs/TROUBLESHOOTING.md`：左右切层误抬下层
+- `AGENTS.md`
