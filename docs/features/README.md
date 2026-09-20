@@ -16,7 +16,7 @@
 | 02 | [大爆炸提取文字](02-bigbang.md) | 已接入 | 框选 + MD3 词块 + AI；`:app` + `BlockerService` |
 | 03 | [番茄钟 overlay](03-focus-timer.md) | 已接入 | `:app` overlay；拦截用 `focus_mode` |
 | 04 | [闪记](04-flash-note.md) | 已接入 | `:app` `FlashNoteStore` |
-| 05 | [作息与习惯守护（Habit Agent）](05-habit-guardian.md) | 已接入 | `:app` Agent/面过滤 + `:reef` HabitHook；视频 `VideoGuard` 仅搜索 |
+| 05 | [习惯守护（Habit Agent）](05-habit-guardian.md) | 已接入 | `:app` Agent/面过滤 + `:reef` HabitHook；视频 `VideoGuard` 仅搜索；AI 接口在设置单独页 |
 | 06 | [Reef 拦截与配置](06-reef-focus.md) | 已接入 | `:reef` |
 | 07 | [MikuUI 现代主页 chrome](07-miku-ui.md) | 已由 14 取代启动壳 | `:app`（控制小窗仍用） |
 | 08 | [拦截气泡（桌宠说话）](08-pet-block-bubble.md) | 已接入 | `:app` 气泡 + `:reef` HabitHook |

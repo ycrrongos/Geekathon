@@ -1,4 +1,4 @@
-# 作息与习惯守护（Habit Agent）
+# 习惯守护（Habit Agent）
 
 | 项 | 内容 |
 |----|------|
@@ -12,7 +12,7 @@
 - **今日进行中的富日程**优先：`allow`/`block` 包名（见 `11-day-schedule.md`）
 - 「重新分析」：商店分类 + AI；本地启发式兜底
 - 应用规则可改模式 / 删除重分析
-- 入口：主页「作息守护」
+- 入口：主页「习惯守护」、日程页按钮、好友页按钮、设置「习惯」分组。页面是 MD3 `HabitGuardianScreen`（开关、睡眠/工作时段、重新分析、标记、规则卡）。**API Key 不在习惯守护页**。设置「AI 接口」（`AiApiActivity`）里：文本接口写入 `HabitPolicyStore.llm*`，并同步 `PetSettings.deepSeekApiKey`；千问 Key 写入 `PetSettings.dashScopeApiKey`。字段一改就落盘，点返回也会按当前内容再写一次，**不必点「重新分析」**。
 - 拦截反馈：桌宠头顶可爱气泡（见 `08-pet-block-bubble.md`），有悬浮窗时不发系统通知
 
 不做什么：不新开无障碍 / specialUse FGS；**不再**分析时批量打开全部 Active 探测；不依赖需鉴权的酷安私有 API。  
@@ -30,6 +30,8 @@
 | 壳层防误拦 | `PageEntertainmentJudge`（SHELL_MIXED）、`SurfaceMatcher` |
 | 视频 | `HabitGuardian.evaluateVideo`、`VideoGuard`、`HabitPolicyStore.defaultVideoSurfaces` |
 | 判定 | `HabitGuardian`（`isAlwaysAllowed` / `isHomeLauncher` / `evaluateActiveDaySchedule`） |
+| 页面 | `HabitGuardianActivity`（薄壳）+ `ui/HabitGuardianScreen.kt` |
+| AI 接口 | `AiApiActivity`：文本 Key → `HabitPolicyStore.llm*` + `PetSettings.deepSeekApiKey`；千问 Key → `PetSettings.dashScopeApiKey`。改字段即保存 |
 | 富日程 | `DayScheduleStore`（进行中时段 allow/block） |
 | 归档对照 | `GuardPet/archived/video-content-judge/`（曾一刀切整包禁，已恢复） |
 
@@ -42,6 +44,6 @@
 
 ## 4. 搜索关键词
 
-`VideoGuard`、`SEARCH_ONLY`、`evaluateVideo`、`matchBlockingActive`、`AppStoreMetaFetcher`、`sanitizePolicy`、`seedCommActivities`、`isHomeLauncher`、`evaluateActiveDaySchedule`
+`VideoGuard`、`SEARCH_ONLY`、`evaluateVideo`、`matchBlockingActive`、`AppStoreMetaFetcher`、`sanitizePolicy`、`seedCommActivities`、`isHomeLauncher`、`evaluateActiveDaySchedule`、`HabitGuardianScreen`、`AiApiActivity`
 
 相关排障：`Active 拦截无效 + 重新分析极慢`、`桌面被标娱乐 + 微信整包禁`、`还原到视频一刀切之前`

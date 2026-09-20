@@ -27,6 +27,37 @@
 
 ## 条目
 
+### 2026-09-20 — 桌宠番茄钟一点就取消，和应用内不同步
+
+- **功能 / 上下文**：`docs/features/03-focus-timer.md`
+- **症状**：从桌宠打开番茄钟，左下只有「取消」；点一下计时就停。应用里的番茄钟还在走另一套时间。
+- **尝试过的方法**：
+  1. 只看 Reef `TimerContent` 底栏 —— 窗内本来有暂停/取消，但 Activity 又在左下加了一颗「取消」
+- **最终原因**：`FocusTimerActivity` 自己的取消按钮和 `onDestroy` → `session.release()` 都会 `cancel()`。桌宠窗和 `MainActivity` 各 `new` 了一个 `OverlayFocusSession`，prefs 和 `TimerStateManager` 却是共用的，一边关掉就把另一边的 `focus_mode` 清掉。
+- **解决方法**：去掉左下取消；关窗/返回只 `finish()`。会话改成 `OverlayFocusSession.shared`。奖励回调只在 `GuardInitProvider` 注册一次。
+- **后续**：点窗外暗幕会关掉窗口，但计时继续。
+
+### 2026-09-20 — 习惯守护的 DeepSeek Key 要点「重新分析」才保存
+
+- **功能 / 上下文**：`docs/features/05-habit-guardian.md` / `AiApiActivity`
+- **症状**：在习惯守护里填了 DeepSeek API，返回后再进来是空的；只有点过「重新分析」才写进偏好。
+- **尝试过的方法**：
+  1. 把接口挪到设置单独页，但只在点「保存」时写入（结果：按返回仍丢）
+- **最终原因**：旧页 `persistLlm()` 只挂在 `runAnalyze()` 上。新页若只在按钮里写，系统返回同样不落盘。
+- **解决方法**：`AiApiActivity` 在每次改字段时写入 `HabitPolicyStore`，并同步 `PetSettings.deepSeekApiKey`。返回键再写一次当前内容。千问 Key 同页写入 `PetSettings.dashScopeApiKey`。习惯守护页不再放 Key。不要在 `DisposableEffect(Unit)` 里保存，那次回调拿的是进页面时的旧值，会把刚改的 Key 覆盖掉。
+- **后续**：`local.properties` 里的 Key 仍是空偏好时的兜底；偏好里有值时以偏好为准。
+
+### 2026-09-20 — 闪记按钮做成圆角矩形，用户要的是胶囊
+
+- **功能 / 上下文**：`docs/features/04-flash-note.md` / `flash_chip_button`
+- **症状**：录音、转换等按钮仍不像「开始闪记」分类那种左右半圆、上下直线的按钮。
+- **尝试过的方法**：
+  1. 用 `oval` 底（结果：拉宽后变成尖椭圆）
+  2. 改成 14dp 圆角矩形（结果：40dp 高时两端不是半圆）
+- **最终原因**：胶囊要用矩形 + 圆角半径 ≥ 高度一半（这里用 1000dp），不能用 `shape=oval`。
+- **解决方法**：`flash_chip_button` / `flash_chip_button_on_card` 的 `corners` 改为 `1000dp`。
+- **后续**：无
+
 ### 2026-09-15 — 点上层控件误触发下层收边再展开
 
 - **功能 / 上下文**：`docs/features/11-day-schedule.md` / `PassthroughFrameLayout`

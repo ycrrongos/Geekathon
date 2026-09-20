@@ -24,7 +24,7 @@ python3 server.py
 2. **抓界面树**：`uiautomator dump`，列表展示全部 node；点击查看 text、content-desc、class、resource-id、bounds 等
 3. **记录**：把选中元素写入同目录 `records.json`（可删单条 / 清空）
 
-## 和作息守护的关系
+## 和习惯守护的关系
 
 用来校准「朋友圈 / 视频号」等真实节点特征，再填回 `HabitPolicyStore` 面规则或手动标记，避免误拦微信聊天页。
 

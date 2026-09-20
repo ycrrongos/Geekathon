@@ -44,7 +44,7 @@
 - 协议：一行一个 JSON。`hello` → 入房；`state` 上报本机宠状态（含 mood/hunger/state/`avatarHash`）；`avatar` 推送 PNG base64；服务端 `room` / `avatar_data` 广播。
 - **状态推送**：`FriendClient` **写与读分离**（禁止把 write 再丢回读线程的单线程队列，否则 state 永远发不出）。入房立刻推 mood/hunger/state；2s 心跳；本机动作变化 `reportAnimState` + `sendPetState`；收 `room` 只布局 overlay。
 - 好友宠：最多 4 个，跟随本宠横向偏移；形象优先 `FriendAvatarCache`；**形象 key 与 motion key 分离**，有定制图仍按对方 state 做 bob/睡觉变暗等。
-- 自定义形象：源能力来自 [1103-jun/AI-](https://github.com/1103-jun/AI-)（参考图生成 + 强制透明背景）；Key 可写 `local.properties` 或好友页输入。
+- 自定义形象：源能力来自 [1103-jun/AI-](https://github.com/1103-jun/AI-)（参考图生成 + 强制透明背景）；千问 Key 在设置「AI 接口」，也可写 `local.properties` 的 `dashscope.api.key`。精细模式的形象页仍可改同一条 Key。
 - XP：用 `ScreenUsageHelper` 算「昨日同时段」与「今日至今」总分钟差；正差转 XP；`xpToNextLevel` 对齐 MC 分段。
 
 ## 5. 不要做的事

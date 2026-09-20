@@ -7,9 +7,9 @@
 默认：
 
 - 单击 → 换样式
-- 双击 → 功能菜单（右上角 X 关闭）
+- 双击 → 功能列表（Material3 色调按钮；从桌宠一侧 Overshoot 展开，收回用 Accelerate 错开，时长与闪记入场/退场相同；右上角关闭）
 - 摇晃 → 摸摸
-- 双击后长按 → 控制小窗
+- 双击后长按 → 控制小窗（`Theme.DesktopPet.Overlay` 的 Material3 卡片）
 
 每个手势的下拉项包含上述原功能，以及提取文字、开始闪记、闪记列表、番茄钟。
 
@@ -17,6 +17,8 @@
 
 - 主页「开启桌宠」（需悬浮窗权限）
 - 主页「快捷手势」四个 Spinner
+- 待办：主页按钮、设置「桌宠」行，打开 `PetPanelActivity`（MD3 全页）。悬浮控制小窗 inflate `activity_pet_panel.xml`（`Theme.DesktopPet.Overlay`，Material3），不要删这份布局，也不要在 `PetService` 里挂 Compose。
+- 定制形象：主页行、好友页卡片、设置「桌宠」行
 
 ## 模块与关键类
 
@@ -31,7 +33,7 @@
 
 ## 不要做的事
 
-不要再开一条 specialUse FGS。不要改 `MIKU-仅参考/`。不要把拖拽移动做成可替换快捷项（会没法挪位置）。
+不要再开一条 specialUse FGS。不要改 `MIKU-仅参考/`。不要把拖拽移动做成可替换快捷项（会没法挪位置）。不要在 `PetService` 的悬浮窗里挂 Compose（没有 Lifecycle，会崩）；功能列表和控制小窗用 `Theme.DesktopPet.Overlay`。
 
 ## 验证步骤
 
