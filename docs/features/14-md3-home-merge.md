@@ -13,7 +13,7 @@
 - 日程：嵌入原多日日程页（`ScheduleWorkbench`），页内有「习惯守护」入口。
 - 统计：Reef **应用用量**（`UsageScreenWrapper`），不是专注统计大卡片。
 - 专注：Reef 专注枢纽（长按环、用量/白名单、计划/网站/正念/番茄钟入口）；点番茄钟进 `TimerContent` + `OverlayFocusSession`。
-- 设置：Reef 设置 + 脚注分组。**桌宠**（定制形象、待办、陪伴偏好、快捷手势）、**好友**、**习惯**、**AI**（接口单独一页 `AiApiActivity`）、**闪记**（只打开已有写作入口，不改闪记界面）、**权限与关于**。同一项在对应功能页也能进：好友页有形象卡和习惯守护入口；日程页有习惯守护；待办是 `PetPanelActivity` 全页。
+- 设置：Reef 设置 + 脚注分组。**桌宠**（定制形象、待办、陪伴偏好、快捷手势）、**好友**、**习惯**、**AI**（接口 `AiApiActivity`，快捷整理 `BigBangShortcutsActivity`）、**闪记**（只打开已有写作入口，不改闪记界面）、**权限与关于**。同一项在对应功能页也能进：好友页有形象卡和习惯守护入口；日程页有习惯守护；待办是 `PetPanelActivity` 全页。提取文字词块页齿轮也进快捷整理。
 - 习惯守护、待办小窗已换成 MD3（`ReefTheme` + `Scaffold`）。透明工具页（大爆炸、番茄钟窗、选时/选麦、闪记播放）保持原样。
 - 不做什么：不启 `FocusModeService`；不跳 AppIntro/Discord/捐赠；品牌「守伴」；**不要改闪记 overlay / 卡片 / 胶囊按钮的布局与 drawable**。
 
